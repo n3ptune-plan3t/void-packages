@@ -10,16 +10,27 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: ghcr.io/void-linux/void-glibc-full:20250801R1  # Use GitHub Container Registry image
+    container: ghcr.io/void-linux/void-glibc-full:20250801R1
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Install dependencies
+    - name: Install dependencies for checkout
       run: |
         xbps-install -Syu
-        xbps-install -Sy git xtools
+        xbps-install -Sy libstdc++
+      continue-on-error: false
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        repository: n3ptune-plan3t/void-packages
+        sparse-checkout: |
+          srcpkgs/cli11
+          common
+        sparse-checkout-cone-mode: false
+
+    - name: Install build dependencies
+      run: |
+        xbps-install -Sy git xtools cmake
       continue-on-error: false
 
     - name: Set up xbps-src
