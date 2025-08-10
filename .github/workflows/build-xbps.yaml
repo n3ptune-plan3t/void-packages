@@ -5,11 +5,12 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: voidlinux/void-linux
+    container: voidlinux/xbps:latest  # Use the correct Void Linux image
 
     steps:
     - name: Checkout repository
@@ -19,19 +20,28 @@ jobs:
       run: |
         xbps-install -Syu
         xbps-install -Sy git xtools
+      continue-on-error: false  # Fail if dependencies cannot be installed
 
     - name: Set up xbps-src
       run: |
+        if [ ! -d "void-packages" ]; then
+          echo "Error: void-packages directory not found"
+          exit 1
+        fi
         cd void-packages
         ./xbps-src binary-bootstrap
         echo "XBPS_CHROOT_CMD=uchroot" >> etc/conf
-        chown root:xbuilder xbps-uchroot
-        chmod 4750 xbps-uchroot
-        usermod -a -G xbuilder nobody
+        chown root:xbuilder xbps-uchroot || echo "Warning: chown failed"
+        chmod 4750 xbps-uchroot || echo "Warning: chmod failed"
+        usermod -a -G xbuilder nobody || echo "Warning: usermod failed"
 
     - name: Build package
       run: |
         cd void-packages
+        if [ ! -d "srcpkgs/cli11" ]; then
+          echo "Error: cli11 template not found"
+          exit 1
+        fi
         ./xbps-src pkg cli11
 
     - name: Upload binary package
@@ -39,3 +49,4 @@ jobs:
       with:
         name: xbps-package
         path: void-packages/hostdir/binpkgs/cli11-*.xbps
+      if: success()  # Only upload if the build succeeds
