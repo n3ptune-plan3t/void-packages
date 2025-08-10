@@ -15,6 +15,7 @@ jobs:
     steps:
     - name: Install dependencies for checkout
       run: |
+        xbps-install -u xbps
         xbps-install -Syu
         xbps-install -Sy libstdc++
       continue-on-error: false
