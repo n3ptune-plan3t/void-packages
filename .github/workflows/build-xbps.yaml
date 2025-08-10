@@ -1,0 +1,41 @@
+name: Build XBPS Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: voidlinux/void-linux
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        xbps-install -Syu
+        xbps-install -Sy git xtools
+
+    - name: Set up xbps-src
+      run: |
+        cd void-packages
+        ./xbps-src binary-bootstrap
+        echo "XBPS_CHROOT_CMD=uchroot" >> etc/conf
+        chown root:xbuilder xbps-uchroot
+        chmod 4750 xbps-uchroot
+        usermod -a -G xbuilder nobody
+
+    - name: Build package
+      run: |
+        cd void-packages
+        ./xbps-src pkg cli11
+
+    - name: Upload binary package
+      uses: actions/upload-artifact@v4
+      with:
+        name: xbps-package
+        path: void-packages/hostdir/binpkgs/cli11-*.xbps
