@@ -1,14 +1,17 @@
 name: Build Floorp (from my void-packages fork)
 
 on:
-  workflow_dispatch:                    # Manual trigger (best for testing)
+  workflow_dispatch:
   push:
-    branches: [ floorp ]                # ← Changed to your branch
+    branches: [ floorp ]
     paths:
       - 'srcpkgs/floorp/template'
       - '.github/workflows/build-floorp.yml'
   pull_request:
-    branches: [ floorp ]                # ← Also watch PRs targeting floorp branch
+    branches: [ floorp ]
+    paths:
+      - 'srcpkgs/floorp/template'
+      - '.github/workflows/build-floorp.yml'
 
 jobs:
   build:
@@ -18,18 +21,28 @@ jobs:
       image: ghcr.io/${{ github.repository_owner }}/void-buildroot-glibc:latest
 
     steps:
-      - name: Checkout your void-packages fork
+      - name: Install required tools (tar, git, etc.)
+        run: |
+          xbps-install -Suy
+          xbps-install -y tar git xtools
+
+      - name: Checkout your void-packages fork (floorp branch)
         uses: actions/checkout@v4
         with:
-          ref: floorp                        # Important: checkout the floorp branch
+          ref: floorp
+          repository: n3ptune-plan3t/void-packages
+          token: ${{ secrets.GITHUB_TOKEN }}   # optional, but safe to keep
 
       - name: Build Floorp package
         working-directory: /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
         run: |
+          # Enable fakechroot for GitHub Actions
           echo 'XBPS_CHROOT_CMD=fakechroot' >> etc/xbps-src.conf
 
+          # Bootstrap (fast if image already has base)
           ./xbps-src binary-bootstrap || true
 
+          # Build Floorp
           ./xbps-src -j$(nproc) pkg floorp
 
       - name: Collect built packages
