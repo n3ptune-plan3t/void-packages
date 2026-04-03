@@ -21,34 +21,41 @@ jobs:
       image: ghcr.io/${{ github.repository_owner }}/void-buildroot-glibc:latest
 
     steps:
-      - name: Install required tools (tar, git, etc.)
+      - name: Install required tools
         run: |
           xbps-install -Suy
-          xbps-install -y tar git xtools
+          xbps-install -y tar git xtools sudo
+
+      - name: Create non-root builder user
+        run: |
+          useradd -m -s /bin/bash void-builder
+          echo "void-builder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/void-builder
 
       - name: Checkout your void-packages fork (floorp branch)
         uses: actions/checkout@v4
         with:
           ref: floorp
           repository: n3ptune-plan3t/void-packages
-          token: ${{ secrets.GITHUB_TOKEN }}   # optional, but safe to keep
 
-      - name: Build Floorp package
-        working-directory: /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - name: Prepare and build Floorp as non-root user
         run: |
-          # Enable fakechroot for GitHub Actions
-          echo 'XBPS_CHROOT_CMD=fakechroot' >> etc/xbps-src.conf
+          su - void-builder -c '
+            cd /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
 
-          # Bootstrap (fast if image already has base)
-          ./xbps-src binary-bootstrap || true
+            # Enable fakechroot
+            echo "XBPS_CHROOT_CMD=fakechroot" >> etc/xbps-src.conf
 
-          # Build Floorp
-          ./xbps-src -j$(nproc) pkg floorp
+            # Bootstrap if needed
+            ./xbps-src binary-bootstrap || true
+
+            # Build Floorp
+            ./xbps-src -j$(nproc) pkg floorp
+          '
 
       - name: Collect built packages
         run: |
           mkdir -p ./artifacts
-          cp /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/hostdir/binpkgs/*/*.xbps ./artifacts/ 2>/dev/null || true
+          cp /home/void-builder/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/hostdir/binpkgs/*/*.xbps ./artifacts/ 2>/dev/null || true
 
       - name: Upload Floorp .xbps artifacts
         uses: actions/upload-artifact@v4
@@ -61,4 +68,4 @@ jobs:
         if: always()
         run: |
           echo "=== Built packages ==="
-          ls -lh /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/hostdir/binpkgs/*/*.xbps 2>/dev/null || echo "No .xbps files found"
+          ls -lh /home/void-builder/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}/hostdir/binpkgs/*/*.xbps 2>/dev/null || echo "No .xbps files found"
