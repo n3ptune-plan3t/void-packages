@@ -3,10 +3,8 @@ pkgname=wlroots0.20
 version=0.20.0
 revision=1
 build_style=meson
-# Follow upstream packaging recommendations:
-# https://gitlab.freedesktop.org/wlroots/wlroots/-/wikis/Packaging-recommendations
-configure_args="--auto-features=enabled -Dexamples=false -Dwerror=false
- -Db_ndebug=false"
+configure_args="-Dwerror=false -Db_ndebug=false
+ -Dwlroots:auto_features=enabled -Dwlroots:examples=false -Dwlroots:werror=false -Dwlroots:b_ndebug=false"
 hostmakedepends="pkg-config wayland-devel glslang hwids"
 _devel_depends="lcms2-devel libgbm-devel libglvnd-devel libseat-devel eudev-libudev-devel
  libdrm-devel libinput-devel libxkbcommon-devel pixman-devel wayland-devel
